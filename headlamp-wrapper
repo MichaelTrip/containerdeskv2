@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# Headlamp embeds Chromium through Electron and requires the same container
+# sandbox workaround as the standalone browser.
+exec /opt/headlamp/headlamp --no-sandbox "$@"

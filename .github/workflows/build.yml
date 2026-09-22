@@ -1,0 +1,109 @@
+name: Debian XRDP build
+
+on:
+  schedule:
+    - cron: "0 3 * * 6"
+  push:
+    branches: ["main"]
+    paths:
+      - "Dockerfile"
+      - "docker-entrypoint.sh"
+      - "chromium-container.conf"
+      - "code-wrapper"
+      - "headlamp-wrapper"
+      - "headlamp.desktop"
+      - "skel/**"
+      - ".github/workflows/build.yml"
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Set registry and token
+        shell: bash
+        run: |
+          if [[ "${{ github.server_url }}" == "https://github.com" ]]; then
+            echo "REGISTRY=ghcr.io" >> "$GITHUB_ENV"
+            echo "CONTAINER_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+          else
+            registry="${{ github.server_url }}"
+            echo "REGISTRY=${registry#https://}" >> "$GITHUB_ENV"
+            echo "CONTAINER_TOKEN=${{ secrets.FORGEJOTOKEN }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Set image name
+        shell: bash
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the container registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ env.CONTAINER_TOKEN }}
+
+      - name: Generate build version and Docker tags
+        shell: bash
+        run: |
+          build_date="$(date -u +'%Y%m%d')"
+          short_sha="$(git rev-parse --short HEAD)"
+          build_version="${build_date}-${short_sha}"
+          image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+
+          echo "BUILD_DATE=$build_date" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$short_sha" >> "$GITHUB_ENV"
+          echo "BUILD_VERSION=$build_version" >> "$GITHUB_ENV"
+          echo "DOCKER_TAGS<<EOF" >> "$GITHUB_ENV"
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/v}"
+            echo "$image:$version" >> "$GITHUB_ENV"
+            echo "$image:latest" >> "$GITHUB_ENV"
+          else
+            branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+            clean_branch="$(sed 's/[^a-zA-Z0-9._-]/-/g' <<< "$branch")"
+
+            if [[ "$branch" == "main" ]]; then
+              echo "$image:latest" >> "$GITHUB_ENV"
+              echo "$image:$build_version" >> "$GITHUB_ENV"
+              echo "$image:$build_date" >> "$GITHUB_ENV"
+            else
+              echo "$image:dev-$clean_branch-$build_version" >> "$GITHUB_ENV"
+              echo "$image:dev-$clean_branch-latest" >> "$GITHUB_ENV"
+              echo "$image:dev-latest" >> "$GITHUB_ENV"
+            fi
+          fi
+
+          echo "EOF" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.DOCKER_TAGS }}
+          build-args: |
+            BUILD_DATE=${{ env.BUILD_DATE }}
+            VERSION=${{ env.BUILD_VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

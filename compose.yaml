@@ -1,0 +1,20 @@
+services:
+  desktop:
+    build:
+      context: .
+    image: xrdp-desktop:debian13
+    restart: unless-stopped
+    environment:
+      XRDP_USERNAME: ${XRDP_USERNAME:?Set XRDP_USERNAME in .env or the shell}
+      XRDP_PASSWORD: ${XRDP_PASSWORD:?Set XRDP_PASSWORD in .env or the shell}
+      XRDP_UID: ${XRDP_UID:-1000}
+      XRDP_GID: ${XRDP_GID:-1000}
+    ports:
+      - "${XRDP_PORT:-3389}:3389"
+    volumes:
+      - xrdp-home:/home
+    shm_size: 1gb
+
+volumes:
+  xrdp-home:
+
