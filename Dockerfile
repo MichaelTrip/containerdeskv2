@@ -127,7 +127,9 @@ COPY headlamp-wrapper /usr/local/bin/headlamp
 COPY headlamp.desktop /usr/local/share/applications/headlamp.desktop
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN cp /usr/share/desktop-base/profiles/xdg-config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml \
+RUN sed -i '/<property name="LockCommand"/a\    <property name="PromptOnLogout" type="bool" value="true"/>' \
+        /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml \
+    && cp /usr/share/desktop-base/profiles/xdg-config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml \
         /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml \
     && chmod 0755 /usr/local/bin/code /usr/local/bin/docker-entrypoint.sh \
         /usr/local/bin/headlamp /etc/skel/.xsession \
