@@ -27,7 +27,7 @@ entrypoint independently performs the same check, so direct `docker run`
 invocations are also protected:
 
 ```sh
-docker build -t xrdp-desktop:debian13 .
+docker build -t xrdp-desktop:debian13-xfce .
 docker run -d \
   --name xrdp-desktop \
   -p 3389:3389 \
@@ -35,7 +35,7 @@ docker run -d \
   -e XRDP_USERNAME=desktop \
   -e XRDP_PASSWORD='replace-me' \
   -v xrdp-home:/home \
-  xrdp-desktop:debian13
+  xrdp-desktop:debian13-xfce
 ```
 
 The `/home` volume preserves the user's browser profiles, documents, mail,
@@ -103,7 +103,7 @@ push a manifest containing AMD64 and ARM64 variants with Buildx:
 ```sh
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t registry.example.com/xrdp-desktop:debian13 \
+  -t registry.example.com/xrdp-desktop:debian13-xfce \
   --push .
 ```
 

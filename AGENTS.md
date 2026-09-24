@@ -80,7 +80,7 @@ XRDP_USERNAME=desktop XRDP_PASSWORD=validation-only docker compose -f compose.ma
 For image changes, build locally:
 
 ```sh
-docker build -t xrdp-desktop:debian13 .
+docker build -t xrdp-desktop:debian13-xfce .
 docker build --build-arg DESKTOP=mate -t xrdp-desktop:debian13-mate .
 ```
 

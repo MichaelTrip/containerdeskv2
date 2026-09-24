@@ -2,7 +2,7 @@ services:
   desktop:
     build:
       context: .
-    image: xrdp-desktop:debian13
+    image: xrdp-desktop:debian13-xfce
     restart: unless-stopped
     environment:
       XRDP_USERNAME: ${XRDP_USERNAME:?Set XRDP_USERNAME in .env or the shell}
