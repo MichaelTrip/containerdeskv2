@@ -62,10 +62,7 @@ jobs:
           short_sha="$(git rev-parse --short HEAD)"
           build_version="${build_date}-${short_sha}"
           image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          suffix=""
-          if [[ "${{ matrix.desktop }}" == "mate" ]]; then
-            suffix="-mate"
-          fi
+          suffix="-${{ matrix.desktop }}"
 
           echo "BUILD_DATE=$build_date" >> "$GITHUB_ENV"
           echo "SHORT_SHA=$short_sha" >> "$GITHUB_ENV"
@@ -75,12 +72,14 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF#refs/tags/v}"
             echo "$image:$version${suffix}" >> "$GITHUB_ENV"
+            echo "$image:debian13${suffix}" >> "$GITHUB_ENV"
             echo "$image:latest${suffix}" >> "$GITHUB_ENV"
           else
             branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
             clean_branch="$(sed 's/[^a-zA-Z0-9._-]/-/g' <<< "$branch")"
 
             if [[ "$branch" == "main" ]]; then
+              echo "$image:debian13${suffix}" >> "$GITHUB_ENV"
               echo "$image:latest${suffix}" >> "$GITHUB_ENV"
               echo "$image:$build_version${suffix}" >> "$GITHUB_ENV"
               echo "$image:$build_date${suffix}" >> "$GITHUB_ENV"

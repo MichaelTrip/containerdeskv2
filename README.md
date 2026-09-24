@@ -92,8 +92,10 @@ docker build --build-arg DESKTOP=mate -t xrdp-desktop:debian13-mate .
 ```
 
 Use this image with the `docker run` options above and a separate home volume.
-CI builds both desktops for AMD64. Published MATE tags append `-mate` to the
-corresponding XFCE tag, for example `latest-mate` or `1.2.3-mate`.
+CI builds both desktops for AMD64. Main and release builds publish
+`debian13-xfce` and `debian13-mate`. All other tags also include the desktop
+suffix, for example `latest-xfce`, `latest-mate`, `1.2.3-xfce`, and `1.2.3-mate`.
+Development builds use separate `dev-...-xfce` and `dev-...-mate` tags.
 
 ## Multi-platform image
 

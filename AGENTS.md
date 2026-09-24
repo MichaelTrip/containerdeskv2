@@ -100,6 +100,7 @@ verify a working graphical login.
 Documentation-only changes do not require an image build. Report checks actually
 performed and identify unavailable Docker, architecture, or GUI validation.
 
-CI uses a desktop matrix with separate cache scopes. Preserve existing XFCE
-tags and the `-mate` suffix for MATE images. Shared changes need validation for
+CI uses a desktop matrix with separate cache scopes. All image tags use the
+`-xfce` or `-mate` suffix; main and release builds also publish `debian13-xfce`
+and `debian13-mate`. Shared changes need validation for
 both desktops. Never overwrite an existing home session to switch desktops.
