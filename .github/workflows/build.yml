@@ -7,12 +7,7 @@ on:
     branches: ["main"]
     paths:
       - "Dockerfile"
-      - "docker-entrypoint.sh"
-      - "chromium-container.conf"
-      - "code-wrapper"
-      - "headlamp-wrapper"
-      - "headlamp.desktop"
-      - "skel/**"
+      - "config/**"
       - ".github/workflows/build.yml"
     tags: ["v*.*.*"]
   pull_request:
@@ -22,6 +17,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        desktop: [xfce, mate]
     permissions:
       contents: read
       packages: write
@@ -63,6 +62,10 @@ jobs:
           short_sha="$(git rev-parse --short HEAD)"
           build_version="${build_date}-${short_sha}"
           image="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          suffix=""
+          if [[ "${{ matrix.desktop }}" == "mate" ]]; then
+            suffix="-mate"
+          fi
 
           echo "BUILD_DATE=$build_date" >> "$GITHUB_ENV"
           echo "SHORT_SHA=$short_sha" >> "$GITHUB_ENV"
@@ -71,20 +74,20 @@ jobs:
 
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             version="${GITHUB_REF#refs/tags/v}"
-            echo "$image:$version" >> "$GITHUB_ENV"
-            echo "$image:latest" >> "$GITHUB_ENV"
+            echo "$image:$version${suffix}" >> "$GITHUB_ENV"
+            echo "$image:latest${suffix}" >> "$GITHUB_ENV"
           else
             branch="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
             clean_branch="$(sed 's/[^a-zA-Z0-9._-]/-/g' <<< "$branch")"
 
             if [[ "$branch" == "main" ]]; then
-              echo "$image:latest" >> "$GITHUB_ENV"
-              echo "$image:$build_version" >> "$GITHUB_ENV"
-              echo "$image:$build_date" >> "$GITHUB_ENV"
+              echo "$image:latest${suffix}" >> "$GITHUB_ENV"
+              echo "$image:$build_version${suffix}" >> "$GITHUB_ENV"
+              echo "$image:$build_date${suffix}" >> "$GITHUB_ENV"
             else
-              echo "$image:dev-$clean_branch-$build_version" >> "$GITHUB_ENV"
-              echo "$image:dev-$clean_branch-latest" >> "$GITHUB_ENV"
-              echo "$image:dev-latest" >> "$GITHUB_ENV"
+              echo "$image:dev-$clean_branch-$build_version${suffix}" >> "$GITHUB_ENV"
+              echo "$image:dev-$clean_branch-latest${suffix}" >> "$GITHUB_ENV"
+              echo "$image:dev-latest${suffix}" >> "$GITHUB_ENV"
             fi
           fi
 
@@ -103,7 +106,8 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.DOCKER_TAGS }}
           build-args: |
+            DESKTOP=${{ matrix.desktop }}
             BUILD_DATE=${{ env.BUILD_DATE }}
             VERSION=${{ env.BUILD_VERSION }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.desktop }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.desktop }}

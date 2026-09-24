@@ -4,6 +4,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG BUILD_DATE
 ARG VERSION=debian13
 ARG TARGETARCH
+ARG DESKTOP=xfce
 ARG KUBECTL_VERSION=1.36.3
 ARG HELM_VERSION=4.2.3
 ARG HEADLAMP_VERSION=0.44.0
@@ -17,7 +18,12 @@ LABEL org.opencontainers.image.title="Debian XRDP workstation" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.authors="Michael Trip"
 
-RUN apt-get update \
+RUN case "${DESKTOP}" in \
+        xfce) desktop_packages="xfce4 xfce4-goodies elementary-xfce-icon-theme" ;; \
+        mate) desktop_packages="mate-desktop-environment-core mate-terminal mate-themes" ;; \
+        *) echo "Unsupported DESKTOP: ${DESKTOP}" >&2; exit 1 ;; \
+    esac \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
         apt-transport-https \
         bash-completion \
@@ -29,7 +35,6 @@ RUN apt-get update \
         dbus-x11 \
         default-jre-headless \
         desktop-base \
-        elementary-xfce-icon-theme \
         fastfetch \
         firefox-esr \
         fonts-dejavu \
@@ -53,12 +58,11 @@ RUN apt-get update \
         tini \
         vim \
         wget \
-        xfce4 \
-        xfce4-goodies \
         xdg-utils \
         xorgxrdp \
         xrdp \
         zsh \
+        ${desktop_packages} \
     && install -d -m 0755 /etc/apt/keyrings \
     && curl --retry 5 --retry-all-errors -fsSL https://packages.microsoft.com/keys/microsoft.asc \
         | gpg --dearmor -o /etc/apt/keyrings/packages.microsoft.gpg \
@@ -71,10 +75,12 @@ RUN apt-get update \
         'Signed-By: /etc/apt/keyrings/packages.microsoft.gpg' \
         > /etc/apt/sources.list.d/vscode.sources \
     && apt-get update \
-    && apt-get install -y --no-install-recommends code \
-    && sed -i 's|^Exec=/usr/share/code/code |Exec=/usr/local/bin/code |' \
-        /usr/share/applications/code.desktop \
-        /usr/share/applications/code-url-handler.desktop
+    && apt-get install -y --no-install-recommends code
+
+# Discover launcher names from the package (older releases used code*.desktop).
+RUN launchers="$(dpkg -L code | sed -n '\|^/usr/share/applications/.*\.desktop$|p')" \
+    && test -n "$launchers" \
+    && printf '%s\n' "$launchers" | xargs sed -i 's|^Exec=/usr/share/code/code |Exec=/usr/local/bin/code |'
 
 RUN case "${TARGETARCH}" in \
         amd64) KUBECM_ARCH=x86_64; HEADLAMP_ARCH=x64 ;; \
@@ -120,17 +126,28 @@ ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8
 
-COPY skel/ /etc/skel/
-COPY chromium-container.conf /etc/chromium.d/99-container-sandbox
-COPY code-wrapper /usr/local/bin/code
-COPY headlamp-wrapper /usr/local/bin/headlamp
-COPY headlamp.desktop /usr/local/share/applications/headlamp.desktop
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY config/skel/ /tmp/desktop-defaults/xfce/
+COPY config/skel-mate/ /tmp/desktop-defaults/mate/
+COPY config/mate-theme.gschema.override /tmp/mate-theme.gschema.override
+COPY config/chromium-container.conf /etc/chromium.d/99-container-sandbox
+COPY config/code-wrapper /usr/local/bin/code
+COPY config/headlamp-wrapper /usr/local/bin/headlamp
+COPY config/headlamp.desktop /usr/local/share/applications/headlamp.desktop
+COPY config/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-RUN sed -i '/<property name="LockCommand"/a\    <property name="PromptOnLogout" type="bool" value="true"/>' \
+RUN cp -a "/tmp/desktop-defaults/${DESKTOP}/." /etc/skel/ \
+    && if [ "${DESKTOP}" = mate ]; then \
+        install -m 0644 /tmp/mate-theme.gschema.override \
+            /usr/share/glib-2.0/schemas/90_xrdp-mate.gschema.override \
+        && glib-compile-schemas --strict /usr/share/glib-2.0/schemas; \
+    fi \
+    && rm -rf /tmp/desktop-defaults /tmp/mate-theme.gschema.override \
+    && if [ "${DESKTOP}" = xfce ]; then \
+        sed -i '/<property name="LockCommand"/a\    <property name="PromptOnLogout" type="bool" value="true"/>' \
         /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml \
     && cp /usr/share/desktop-base/profiles/xdg-config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml \
-        /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml \
+        /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml; \
+    fi \
     && chmod 0755 /usr/local/bin/code /usr/local/bin/docker-entrypoint.sh \
         /usr/local/bin/headlamp /etc/skel/.xsession \
     && mkdir -p /home /run/xrdp /var/run/xrdp

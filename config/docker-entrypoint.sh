@@ -63,10 +63,16 @@ printf '%s:%s\n' "$username" "$password" | chpasswd
 chown "$username:$existing_group" "/home/$username"
 
 # Seed desktop defaults when a persistent home predates the current image.
+if [[ ! -e "/home/$username/.xsession" ]]; then
+    install -m 0755 -o "$username" -g "$existing_group" \
+        /etc/skel/.xsession "/home/$username/.xsession"
+fi
+
 readonly xfce_config_dir="/home/$username/.config/xfce4/xfconf/xfce-perchannel-xml"
-install -d -m 0755 -o "$username" -g "$existing_group" "$xfce_config_dir"
 for config_file in xfce4-desktop.xml xsettings.xml; do
-    if [[ ! -e "$xfce_config_dir/$config_file" ]]; then
+    if [[ -f "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/$config_file" \
+        && ! -e "$xfce_config_dir/$config_file" ]]; then
+        install -d -m 0755 -o "$username" -g "$existing_group" "$xfce_config_dir"
         install -m 0644 -o "$username" -g "$existing_group" \
             "/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/$config_file" \
             "$xfce_config_dir/$config_file"

@@ -1,6 +1,6 @@
 # Debian XRDP desktop container
 
-A multi-architecture Debian 13 desktop image with XRDP and XFCE. It supports
+A multi-architecture Debian 13 desktop image with XRDP and a choice of XFCE (default) or MATE. It supports
 both `linux/amd64` and `linux/arm64` (including a Raspberry Pi 4 running a
 64-bit OS).
 
@@ -47,6 +47,54 @@ Passwords may contain shell-special characters, but not a colon or newline.
 Avoid exposing TCP port 3389 directly to the public internet; use a firewall,
 VPN, or SSH tunnel.
 
+## MATE variant
+
+Use the same `.env` credentials as above, then start the standalone MATE Compose
+configuration:
+
+```sh
+docker compose -f compose.mate.yaml up --build -d
+```
+
+This builds the shared Dockerfile with `DESKTOP=mate`, installs the MATE core
+desktop, and starts `mate-session` on RDP login. Both variants include the same
+applications and command-line tools. XFCE remains the default build.
+
+MATE defaults to Adwaita Dark for applications, with ClearlooksRe window borders
+and a dark color preference for applications that support it. These are defaults,
+not locked settings. To apply the theme to an existing profile, run these commands
+in a terminal inside your MATE desktop:
+
+```sh
+gsettings set org.mate.interface gtk-theme 'Adwaita-dark'
+gsettings set org.mate.Marco.general theme 'ClearlooksRe'
+gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark'
+gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+```
+
+MATE uses its own Compose project (`xrdp-mate`) and home volume
+(`xrdp-mate-home`). Keep the desktops on separate home volumes because each
+home's `.xsession` selects its desktop. Existing session files are preserved.
+To run both variants together, select a different host port for MATE:
+
+```sh
+XRDP_PORT=3390 docker compose -f compose.mate.yaml up --build -d
+```
+
+Use `docker compose -f compose.mate.yaml logs` and
+`docker compose -f compose.mate.yaml down` to inspect or stop MATE. Stopping
+without `--volumes` preserves its home data.
+
+To build MATE directly:
+
+```sh
+docker build --build-arg DESKTOP=mate -t xrdp-desktop:debian13-mate .
+```
+
+Use this image with the `docker run` options above and a separate home volume.
+CI builds both desktops for AMD64. Published MATE tags append `-mate` to the
+corresponding XFCE tag, for example `latest-mate` or `1.2.3-mate`.
+
 ## Multi-platform image
 
 The Dockerfile uses packages available on both target architectures. Build and
@@ -61,3 +109,13 @@ docker buildx build \
 
 A normal `docker compose build` automatically builds for the host architecture.
 The Raspberry Pi must use a 64-bit OS to run the `linux/arm64` variant.
+
+For MATE, add `--build-arg DESKTOP=mate` and use a distinct image tag in the
+Buildx command above. ARM64 builds are not currently covered by CI.
+
+## Container configuration
+
+Files copied into the image live under `config/`: application wrappers, desktop
+launchers, the entrypoint, theme defaults, and the `skel/` and `skel-mate/` user
+defaults. The Dockerfile and Compose files stay in the project root alongside
+`.env`, so the build and startup commands above still apply.
