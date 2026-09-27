@@ -130,6 +130,7 @@ COPY config/skel/ /tmp/desktop-defaults/xfce/
 COPY config/skel-mate/ /tmp/desktop-defaults/mate/
 COPY config/mate-theme.gschema.override /tmp/mate-theme.gschema.override
 COPY --chmod=0644 config/wallpaper.png /usr/share/backgrounds/xrdp/wallpaper.png
+RUN chmod -R 0644 /usr/share/backgrounds/xrdp/
 COPY config/chromium-container.conf /etc/chromium.d/99-container-sandbox
 COPY config/code-wrapper /usr/local/bin/code
 COPY config/headlamp-wrapper /usr/local/bin/headlamp
