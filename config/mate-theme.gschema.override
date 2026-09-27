@@ -1,3 +1,7 @@
+[org.mate.background]
+picture-filename='/usr/share/backgrounds/xrdp/wallpaper.png'
+picture-options='zoom'
+
 [org.mate.interface]
 gtk-theme='Adwaita-dark'
 
