@@ -129,8 +129,8 @@ ENV LANG=en_US.UTF-8 \
 COPY config/skel/ /tmp/desktop-defaults/xfce/
 COPY config/skel-mate/ /tmp/desktop-defaults/mate/
 COPY config/mate-theme.gschema.override /tmp/mate-theme.gschema.override
-COPY --chmod=0644 config/wallpaper.png /usr/share/backgrounds/xrdp/wallpaper.png
-RUN chmod -R 0644 /usr/share/backgrounds/xrdp/
+RUN install -d -m 0755 /usr/share/wallpapers
+COPY --chmod=0644 config/wallpaper.png /usr/share/wallpapers/wallpaper.png
 COPY config/chromium-container.conf /etc/chromium.d/99-container-sandbox
 COPY config/code-wrapper /usr/local/bin/code
 COPY config/headlamp-wrapper /usr/local/bin/headlamp
@@ -147,7 +147,7 @@ RUN cp -a "/tmp/desktop-defaults/${DESKTOP}/." /etc/skel/ \
     && if [ "${DESKTOP}" = xfce ]; then \
         sed -i '/<property name="LockCommand"/a\    <property name="PromptOnLogout" type="bool" value="true"/>' \
         /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml \
-    && sed -i 's|/usr/share/images/desktop-base/default|/usr/share/backgrounds/xrdp/wallpaper.png|g' \
+    && sed -i 's|/usr/share/images/desktop-base/default|/usr/share/wallpapers/wallpaper.png|g' \
         /usr/share/desktop-base/profiles/xdg-config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml \
     && cp /usr/share/desktop-base/profiles/xdg-config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml \
         /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml; \

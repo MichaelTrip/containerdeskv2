@@ -123,7 +123,7 @@ defaults. The Dockerfile and Compose files stay in the project root alongside
 `.env`, so the build and startup commands above still apply.
 
 Both desktops use `config/wallpaper.png` as the default wallpaper, installed at
-`/usr/share/backgrounds/xrdp/wallpaper.png`. XFCE seeds this default for homes
+`/usr/share/wallpapers/wallpaper.png` (directory mode `0755`, file mode `0644`). XFCE seeds this default for homes
 without an existing desktop configuration; MATE uses it as a system default.
 Existing user wallpaper settings take precedence. Replace the PNG and rebuild
 the image to change the bundled wallpaper.
