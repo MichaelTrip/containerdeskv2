@@ -61,6 +61,7 @@ RUN case "${DESKTOP}" in \
         xdg-utils \
         xorgxrdp \
         xrdp \
+        openssh-client \
         zsh \
         ${desktop_packages} \
     && install -d -m 0755 /etc/apt/keyrings \
