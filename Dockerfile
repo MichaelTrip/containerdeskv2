@@ -12,6 +12,13 @@ ARG K9S_VERSION=0.51.0
 ARG FREELENS_VERSION=1.10.3
 ARG KUBECM_VERSION=0.35.1
 ARG KUBECTX_VERSION=0.11.0
+ARG LFK_VERSION=0.19.1
+ARG KUBEVIRT_VERSION=1.9.0
+ARG OIDC_LOGIN_VERSION=1.36.4
+ARG ARGOCD_VERSION=3.5.0
+ARG ARGONAUT_VERSION=2.20.0
+ARG SOFKA_VERSION=0.29.6
+ARG FORGEJO_CLI_VERSION=0.6.0
 
 LABEL org.opencontainers.image.title="Debian XRDP workstation" \
       org.opencontainers.image.version="${VERSION}" \
@@ -44,6 +51,15 @@ RUN case "${DESKTOP}" in \
         gvfs \
         inetutils-traceroute \
         iputils-ping \
+        jq \
+        dnsutils \
+        mc \
+        neovim \
+        netcat-openbsd \
+        openssl \
+        tmux \
+        unzip \
+        yq \
         locales \
         libreoffice \
         libglib2.0-bin \
@@ -107,7 +123,7 @@ RUN case "${TARGETARCH}" in \
         "https://github.com/sunny0826/kubecm/releases/download/v${KUBECM_VERSION}/kubecm_v${KUBECM_VERSION}_Linux_${KUBECM_ARCH}.tar.gz" \
     && tar -xzf /tmp/kubecm.tar.gz -C /usr/local/bin kubecm \
     && curl --retry 5 --retry-all-errors -fsSLo /usr/local/bin/kubectx \
-        "https://github.com/ahmetb/kubectx/releases/download/v${KUBECTX_VERSION}/kubectx" \
+        "https://raw.githubusercontent.com/ahmetb/kubectx/v${KUBECTX_VERSION}/kubectx" \
     && curl --retry 5 --retry-all-errors -fsSLo /tmp/freelens.deb \
         "https://github.com/freelensapp/freelens/releases/download/v${FREELENS_VERSION}/Freelens-${FREELENS_VERSION}-linux-${TARGETARCH}.deb" \
     && apt-get install -y --no-install-recommends /tmp/freelens.deb \
@@ -122,6 +138,80 @@ RUN case "${TARGETARCH}" in \
     && locale-gen \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+
+# Additional management tools use the same version pins as k8s-mgmt-pod.
+RUN case "${TARGETARCH}" in \
+        amd64) CLI_ARCH=x86_64 ;; \
+        arm64) CLI_ARCH=aarch64 ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac \
+    && mkdir -p /tmp/k8s-tools \
+    && cd /tmp/k8s-tools \
+    && curl --retry 5 --retry-all-errors -fsSLO \
+        "https://github.com/janosmiko/lfk/releases/download/v${LFK_VERSION}/lfk_${LFK_VERSION}_linux_${TARGETARCH}.deb" \
+    && curl --retry 5 --retry-all-errors -fsSLo lfk.checksums \
+        "https://github.com/janosmiko/lfk/releases/download/v${LFK_VERSION}/checksums.txt" \
+    && grep " lfk_${LFK_VERSION}_linux_${TARGETARCH}.deb$" lfk.checksums | sha256sum --check - \
+    && dpkg -i "lfk_${LFK_VERSION}_linux_${TARGETARCH}.deb" \
+    && curl --retry 5 --retry-all-errors -fsSLo /usr/local/bin/kubectl-virt \
+        "https://github.com/kubevirt/kubevirt/releases/download/v${KUBEVIRT_VERSION}/virtctl-v${KUBEVIRT_VERSION}-linux-${TARGETARCH}" \
+    && chmod 0755 /usr/local/bin/kubectl-virt \
+    && ln -s kubectl-virt /usr/local/bin/virtctl \
+    && curl --retry 5 --retry-all-errors -fsSLO \
+        "https://github.com/int128/kubelogin/releases/download/v${OIDC_LOGIN_VERSION}/kubelogin_linux_${TARGETARCH}.zip" \
+    && curl --retry 5 --retry-all-errors -fsSLO \
+        "https://github.com/int128/kubelogin/releases/download/v${OIDC_LOGIN_VERSION}/kubelogin_linux_${TARGETARCH}.zip.sha256" \
+    && sha256sum --check "kubelogin_linux_${TARGETARCH}.zip.sha256" \
+    && unzip -p "kubelogin_linux_${TARGETARCH}.zip" kubelogin > /usr/local/bin/kubectl-oidc_login \
+    && chmod 0755 /usr/local/bin/kubectl-oidc_login \
+    && curl --retry 5 --retry-all-errors -fsSLo /usr/local/bin/kubens \
+        "https://raw.githubusercontent.com/ahmetb/kubectx/v${KUBECTX_VERSION}/kubens" \
+    && chmod 0755 /usr/local/bin/kubens \
+    && curl --retry 5 --retry-all-errors -fsSLO \
+        "https://github.com/argoproj/argo-cd/releases/download/v${ARGOCD_VERSION}/argocd-linux-${TARGETARCH}" \
+    && curl --retry 5 --retry-all-errors -fsSLo argocd.checksums \
+        "https://github.com/argoproj/argo-cd/releases/download/v${ARGOCD_VERSION}/cli_checksums.txt" \
+    && grep " argocd-linux-${TARGETARCH}$" argocd.checksums | sha256sum --check - \
+    && install -m 0755 "argocd-linux-${TARGETARCH}" /usr/local/bin/argocd \
+    && curl --retry 5 --retry-all-errors -fsSLO \
+        "https://github.com/darksworm/argonaut/releases/download/v${ARGONAUT_VERSION}/argonaut-${ARGONAUT_VERSION}-linux-${TARGETARCH}.tar.gz" \
+    && curl --retry 5 --retry-all-errors -fsSLo argonaut.checksums \
+        "https://github.com/darksworm/argonaut/releases/download/v${ARGONAUT_VERSION}/checksums.txt" \
+    && grep " argonaut-${ARGONAUT_VERSION}-linux-${TARGETARCH}.tar.gz$" argonaut.checksums | sha256sum --check - \
+    && tar -xzf "argonaut-${ARGONAUT_VERSION}-linux-${TARGETARCH}.tar.gz" -C /usr/local/bin argonaut \
+    && curl --retry 5 --retry-all-errors -fsSLO \
+        "https://github.com/nklmilojevic/sofka/releases/download/v${SOFKA_VERSION}/sofka-v${SOFKA_VERSION}-${CLI_ARCH}-unknown-linux-gnu.tar.gz" \
+    && curl --retry 5 --retry-all-errors -fsSLo sofka.checksums \
+        "https://github.com/nklmilojevic/sofka/releases/download/v${SOFKA_VERSION}/SHA256SUMS" \
+    && grep " sofka-v${SOFKA_VERSION}-${CLI_ARCH}-unknown-linux-gnu.tar.gz$" sofka.checksums | sha256sum --check - \
+    && mkdir -p sofka /usr/local/share/licenses/sofka \
+    && tar -xzf "sofka-v${SOFKA_VERSION}-${CLI_ARCH}-unknown-linux-gnu.tar.gz" -C sofka \
+    && install -m 0755 sofka/sofka /usr/local/bin/sofka \
+    && cp -a sofka/LICENSE-APACHE sofka/LICENSE-MIT sofka/RUST-LICENSES.html \
+        sofka/THIRD-PARTY-LICENSES.txt sofka/THIRD-PARTY-SOURCES /usr/local/share/licenses/sofka/ \
+    && curl --retry 5 --retry-all-errors -fsSLo forgejo-cli.tar.gz \
+        "https://codeberg.org/forgejo-contrib/forgejo-cli/releases/download/v${FORGEJO_CLI_VERSION}/forgejo-cli-${CLI_ARCH}-linux.tar.gz" \
+    && tar -xzf forgejo-cli.tar.gz -C /usr/local/bin fj \
+    && mkdir -p /etc/bash_completion.d \
+    && curl --retry 5 --retry-all-errors -fsSLo /etc/bash_completion.d/kubectx \
+        "https://raw.githubusercontent.com/ahmetb/kubectx/v${KUBECTX_VERSION}/completion/kubectx.bash" \
+    && curl --retry 5 --retry-all-errors -fsSLo /etc/bash_completion.d/kubens \
+        "https://raw.githubusercontent.com/ahmetb/kubectx/v${KUBECTX_VERSION}/completion/kubens.bash" \
+    && kubectl completion bash > /etc/bash_completion.d/kubectl \
+    && helm completion bash > /etc/bash_completion.d/helm \
+    && argocd completion bash > /etc/bash_completion.d/argocd \
+    && sofka completion bash > /etc/bash_completion.d/sofka \
+    && XDG_CONFIG_HOME=/tmp/k8s-tools/fj-config fj completion bash > fj-completion.bash \
+    # Forgejo CLI 0.6.0 prints a banner before the completion script.
+    && tail -n +2 fj-completion.bash > /etc/bash_completion.d/fj \
+    && bash -n /etc/bash_completion.d/fj \
+    && chmod 0644 /etc/bash_completion.d/* \
+    && cd / \
+    && rm -rf /tmp/k8s-tools
+
+COPY --chmod=0644 config/k8s-tools-completion.sh /etc/profile.d/20-k8s-tools-completion.sh
+# Desktop terminals start non-login Bash shells; login shells use /etc/profile.d.
+RUN printf '\n. /etc/profile.d/20-k8s-tools-completion.sh\n' >> /etc/bash.bashrc
 
 ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \

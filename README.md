@@ -6,9 +6,20 @@ both `linux/amd64` and `linux/arm64` (including a Raspberry Pi 4 running a
 
 Desktop applications include Firefox ESR, Chromium, Thunderbird, LibreOffice,
 Visual Studio Code, Freelens, Headlamp, Pluma, and Tilix. The image also
-contains kubectl, Helm, k9s, kubecm, kubectx, Vim, Zsh, Java, common network
-diagnostics, and shell-completion support. The XRDP user belongs to `sudo` and
+contains kubectl, Helm, k9s, kubecm, kubectx, kubens, lfk, KubeVirt virtctl
+(`virtctl` and `kubectl virt`), OIDC login (`kubectl oidc-login`), Argo CD,
+Argonaut, Sofka, Forgejo CLI (`fj`), Vim, Neovim, Midnight Commander, tmux,
+jq, Debian yq, Zsh, Java, and common network diagnostics. The XRDP user belongs to `sudo` and
 can elevate using the same password used to log in.
+
+The management CLI versions are pinned through Dockerfile build arguments to
+match the supplied k8s-mgmt-pod image. Bash completion is enabled for kubectl,
+Helm, kubectx, kubens, Argo CD, Sofka, and Forgejo CLI, including the `k=kubectl`
+alias. The system-wide setup works in interactive login shells and desktop
+terminals, including existing home volumes, without modifying user dotfiles.
+Forgejo's completion banner workaround is applied once during the image build.
+Rebuild the image and open a new terminal to use these additions. This image
+uses XRDP; it does not include the other image's WebSSH2/nginx/SSH-server stack.
 
 ## Start with Docker Compose
 
