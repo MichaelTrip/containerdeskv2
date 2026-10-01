@@ -15,7 +15,8 @@ can elevate using the same password used to log in.
 The management CLI versions are pinned through Dockerfile build arguments to
 match the supplied k8s-mgmt-pod image. Bash completion is enabled for kubectl,
 Helm, kubectx, kubens, Argo CD, Sofka, and Forgejo CLI, including the `k=kubectl`
-alias. The system-wide setup works in interactive login shells and desktop
+alias. A system-wide `k` command also forwards arguments to kubectl in other
+shells and non-interactive commands. The completion setup works in interactive Bash login shells and desktop
 terminals, including existing home volumes, without modifying user dotfiles.
 Forgejo's completion banner workaround is applied once during the image build.
 Rebuild the image and open a new terminal to use these additions. This image

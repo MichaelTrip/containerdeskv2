@@ -210,6 +210,7 @@ RUN case "${TARGETARCH}" in \
     && rm -rf /tmp/k8s-tools
 
 COPY --chmod=0644 config/k8s-tools-completion.sh /etc/profile.d/20-k8s-tools-completion.sh
+COPY --chmod=0755 config/k-wrapper /usr/local/bin/k
 # Desktop terminals start non-login Bash shells; login shells use /etc/profile.d.
 RUN printf '\n. /etc/profile.d/20-k8s-tools-completion.sh\n' >> /etc/bash.bashrc
 
