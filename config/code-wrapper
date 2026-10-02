@@ -3,7 +3,6 @@
 # Visual Studio Code embeds Chromium through Electron and requires the same
 # container sandbox workaround as the standalone browser.
 exec /usr/bin/code \
-    --no-sandbox \
     --disable-gpu \
     --disable-software-rasterizer \
     "$@"

@@ -223,7 +223,6 @@ COPY config/skel-mate/ /tmp/desktop-defaults/mate/
 COPY config/mate-theme.gschema.override /tmp/mate-theme.gschema.override
 RUN install -d -m 0755 /usr/share/wallpapers
 COPY --chmod=0644 config/wallpaper.png /usr/share/wallpapers/wallpaper.png
-COPY config/chromium-container.conf /etc/chromium.d/99-container-sandbox
 COPY config/code-wrapper /usr/local/bin/code
 COPY config/headlamp-wrapper /usr/local/bin/headlamp
 COPY config/headlamp.desktop /usr/local/share/applications/headlamp.desktop
