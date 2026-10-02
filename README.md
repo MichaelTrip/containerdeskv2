@@ -87,6 +87,13 @@ gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 MATE uses its own Compose project (`xrdp-mate`) and home volume
 (`xrdp-mate-home`). Keep the desktops on separate home volumes because each
 home's `.xsession` selects its desktop. Existing session files are preserved.
+
+MATE's **Log Out** ends the desktop and its remaining application and background
+processes. Applications get three seconds to exit before remaining processes are
+killed. Closing the RDP client keeps the session available for reconnecting.
+Rebuild the MATE image and recreate its container to apply this behavior; existing
+home settings and `.xsession` files are preserved.
+
 To run both variants together, select a different host port for MATE:
 
 ```sh

@@ -27,7 +27,7 @@ LABEL org.opencontainers.image.title="Debian XRDP workstation" \
 
 RUN case "${DESKTOP}" in \
         xfce) desktop_packages="xfce4 xfce4-goodies elementary-xfce-icon-theme" ;; \
-        mate) desktop_packages="mate-desktop-environment-core mate-terminal mate-themes" ;; \
+        mate) desktop_packages="mate-desktop-environment-core mate-terminal mate-themes python3" ;; \
         *) echo "Unsupported DESKTOP: ${DESKTOP}" >&2; exit 1 ;; \
     esac \
     && apt-get update \
@@ -227,12 +227,15 @@ COPY config/code-wrapper /usr/local/bin/code
 COPY config/headlamp-wrapper /usr/local/bin/headlamp
 COPY config/headlamp.desktop /usr/local/share/applications/headlamp.desktop
 COPY config/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chmod=0755 config/mate-session-supervisor /usr/local/bin/mate-session-supervisor
+COPY --chmod=0755 config/mate-startwm.sh /usr/local/bin/mate-startwm.sh
 
 RUN cp -a "/tmp/desktop-defaults/${DESKTOP}/." /etc/skel/ \
     && if [ "${DESKTOP}" = mate ]; then \
         install -m 0644 /tmp/mate-theme.gschema.override \
             /usr/share/glib-2.0/schemas/90_xrdp-mate.gschema.override \
-        && glib-compile-schemas --strict /usr/share/glib-2.0/schemas; \
+        && glib-compile-schemas --strict /usr/share/glib-2.0/schemas \
+        && install -m 0755 /usr/local/bin/mate-startwm.sh /etc/xrdp/startwm.sh; \
     fi \
     && rm -rf /tmp/desktop-defaults /tmp/mate-theme.gschema.override \
     && if [ "${DESKTOP}" = xfce ]; then \

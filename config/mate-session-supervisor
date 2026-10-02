@@ -1,0 +1,94 @@
+#!/usr/bin/python3
+"""Keep MATE's descendants owned by this session and clean them up on logout."""
+
+import ctypes
+import os
+from pathlib import Path
+import signal
+import subprocess
+import time
+
+
+def descendants():
+    pending = [os.getpid()]
+    found = set()
+    while pending:
+        parent = pending.pop()
+        try:
+            children = Path(f"/proc/{parent}/task/{parent}/children").read_text()
+        except FileNotFoundError:
+            continue
+        for child in map(int, children.split()):
+            if child not in found:
+                found.add(child)
+                pending.append(child)
+    return found
+
+
+def send_signal(pids, signum):
+    for pid in pids:
+        try:
+            os.kill(pid, signum)
+        except ProcessLookupError:
+            pass
+
+
+def reap():
+    while True:
+        try:
+            pid, _ = os.waitpid(-1, os.WNOHANG)
+        except ChildProcessError:
+            return
+        if pid == 0:
+            return
+
+
+def main():
+    # Adopt orphaned descendants, including applications which double-fork or
+    # create their own process group/session. Do not kill other logins by UID.
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(36, 1, 0, 0, 0) != 0:  # PR_SET_CHILD_SUBREAPER
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+
+    stopping = False
+
+    def stop(signum, frame):
+        nonlocal stopping
+        stopping = True
+
+    for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        signal.signal(signum, stop)
+
+    env = os.environ.copy()
+    # Give D-Bus activated applications the same lifetime as this login.
+    env.pop("DBUS_SESSION_BUS_ADDRESS", None)
+    env.pop("DBUS_SESSION_BUS_PID", None)
+    session = subprocess.Popen(
+        ["dbus-run-session", "--", "/etc/X11/Xsession"], env=env
+    )
+    try:
+        while session.poll() is None and not stopping:
+            time.sleep(0.1)
+    finally:
+        # Give applications a bounded graceful shutdown, then remove survivors.
+        deadline = time.monotonic() + 3
+        while True:
+            remaining = descendants()
+            if not remaining:
+                break
+            send_signal(remaining, signal.SIGTERM)
+            reap()
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(0.1)
+        while descendants():
+            send_signal(descendants(), signal.SIGKILL)
+            reap()
+            time.sleep(0.05)
+        reap()
+    return session.returncode if session.returncode is not None else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
