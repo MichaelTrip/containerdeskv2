@@ -232,7 +232,11 @@ COPY --chmod=0755 config/mate-startwm.sh /usr/local/bin/mate-startwm.sh
 
 RUN cp -a "/tmp/desktop-defaults/${DESKTOP}/." /etc/skel/ \
     && if [ "${DESKTOP}" = mate ]; then \
-        install -m 0644 /tmp/mate-theme.gschema.override \
+        apt-get update \
+        && apt-get install -y --no-install-recommends python3-dbus python3-gi \
+        && apt-get clean \
+        && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
+        && install -m 0644 /tmp/mate-theme.gschema.override \
             /usr/share/glib-2.0/schemas/90_xrdp-mate.gschema.override \
         && glib-compile-schemas --strict /usr/share/glib-2.0/schemas \
         && install -m 0755 /usr/local/bin/mate-startwm.sh /etc/xrdp/startwm.sh; \

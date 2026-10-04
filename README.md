@@ -90,7 +90,9 @@ home's `.xsession` selects its desktop. Existing session files are preserved.
 
 MATE's **Log Out** ends the desktop and its remaining application and background
 processes. Applications get three seconds to exit before remaining processes are
-killed. Closing the RDP client keeps the session available for reconnecting.
+killed. A session watchdog also ends a stalled MATE shutdown after ten seconds
+once logout is confirmed. Cancelling logout keeps the session running.
+Closing the RDP client keeps the session available for reconnecting.
 Rebuild the MATE image and recreate its container to apply this behavior; existing
 home settings and `.xsession` files are preserved.
 

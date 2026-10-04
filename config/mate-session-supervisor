@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import signal
 import subprocess
+import sys
 import time
 
 
@@ -43,9 +44,58 @@ def reap():
             return
 
 
+def watch_logout(stop_session):
+    import dbus
+    from dbus.mainloop.glib import DBusGMainLoop
+    from gi.repository import GLib
+
+    # Register a real session client so the timeout starts only after MATE's
+    # logout confirmation/inhibitor dialogs, never on an RDP disconnect.
+    DBusGMainLoop(set_as_default=True)
+    bus = dbus.SessionBus()
+    context = GLib.MainContext.default()
+    client = None
+    logout_deadline = None
+
+    def respond(flags):
+        client.EndSessionResponse(True, "", reply_handler=lambda: None,
+                                  error_handler=lambda error: None)
+
+    def end_session(flags):
+        nonlocal logout_deadline
+        logout_deadline = time.monotonic() + 10
+        respond(flags)
+
+    def cancel_session():
+        nonlocal logout_deadline
+        logout_deadline = None
+
+    def poll():
+        nonlocal client
+        if client is None and bus.name_has_owner("org.gnome.SessionManager"):
+            manager = dbus.Interface(bus.get_object(
+                "org.gnome.SessionManager", "/org/gnome/SessionManager"
+            ), "org.gnome.SessionManager")
+            path = manager.RegisterClient("xrdp-logout-watchdog", "")
+            client = dbus.Interface(bus.get_object(
+                "org.gnome.SessionManager", path
+            ), "org.gnome.SessionManager.ClientPrivate")
+            client.connect_to_signal("QueryEndSession", respond)
+            client.connect_to_signal("EndSession", end_session)
+            client.connect_to_signal("CancelEndSession", cancel_session)
+            client.connect_to_signal("Stop", stop_session)
+        while context.pending():
+            context.iteration(False)
+        if logout_deadline is not None and time.monotonic() >= logout_deadline:
+            print("MATE logout timed out; ending session processes.",
+                  file=sys.stderr, flush=True)
+            stop_session()
+    return poll
+
+
 def main():
-    # Adopt orphaned descendants, including applications which double-fork or
-    # create their own process group/session. Do not kill other logins by UID.
+    # Both the private bus and the desktop have subreapers. The outer one also
+    # owns orphaned D-Bus activated services when the private bus exits.
     libc = ctypes.CDLL(None, use_errno=True)
     if libc.prctl(36, 1, 0, 0, 0) != 0:  # PR_SET_CHILD_SUBREAPER
         error = ctypes.get_errno()
@@ -53,22 +103,26 @@ def main():
 
     stopping = False
 
-    def stop(signum, frame):
+    def stop_session():
         nonlocal stopping
         stopping = True
 
     for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
-        signal.signal(signum, stop)
+        signal.signal(signum, lambda signum, frame: stop_session())
 
     env = os.environ.copy()
-    # Give D-Bus activated applications the same lifetime as this login.
-    env.pop("DBUS_SESSION_BUS_ADDRESS", None)
-    env.pop("DBUS_SESSION_BUS_PID", None)
-    session = subprocess.Popen(
-        ["dbus-run-session", "--", "/etc/X11/Xsession"], env=env
-    )
+    if sys.argv[1:] == ["--session-bus"]:
+        poll = watch_logout(stop_session)
+        command = ["/etc/X11/Xsession"]
+    else:
+        poll = lambda: None
+        env.pop("DBUS_SESSION_BUS_ADDRESS", None)
+        env.pop("DBUS_SESSION_BUS_PID", None)
+        command = ["dbus-run-session", "--", sys.executable, __file__, "--session-bus"]
+    session = subprocess.Popen(command, env=env)
     try:
         while session.poll() is None and not stopping:
+            poll()
             time.sleep(0.1)
     finally:
         # Give applications a bounded graceful shutdown, then remove survivors.
@@ -82,7 +136,8 @@ def main():
             if time.monotonic() >= deadline:
                 break
             time.sleep(0.1)
-        while descendants():
+        deadline = time.monotonic() + 1
+        while descendants() and time.monotonic() < deadline:
             send_signal(descendants(), signal.SIGKILL)
             reap()
             time.sleep(0.05)
