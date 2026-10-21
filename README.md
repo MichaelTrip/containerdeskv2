@@ -148,3 +148,6 @@ Both desktops use `config/wallpaper.png` as the default wallpaper, installed at
 without an existing desktop configuration; MATE uses it as a system default.
 Existing user wallpaper settings take precedence. Replace the PNG and rebuild
 the image to change the bundled wallpaper.
+
+
+
