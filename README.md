@@ -109,7 +109,6 @@ CI builds both desktops sequentially for AMD64. Main and release builds publish
 suffix, for example `latest-xfce`, `latest-mate`, `1.2.3-xfce`, and `1.2.3-mate`.
 Development builds use separate `dev-...-xfce` and `dev-...-mate` tags.
 The workflow does not export BuildKit layers to the Forgejo runner cache.
-See [runner cleanup](ops/README.md) for the `dockerhost01` maintenance timer.
 
 ## Multi-platform image
 
