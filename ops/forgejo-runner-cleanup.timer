@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Forgejo runner cache cleanup
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+Unit=forgejo-runner-cleanup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,9 @@
+[Unit]
+Description=Prune Forgejo runner cache and old Docker build data
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/forgejo-runner-cleanup
+TimeoutStartSec=4h
